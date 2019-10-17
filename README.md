@@ -1,10 +1,15 @@
 # coalitions
 
-This Python module allows you to find plausible and feasible political coalitions.
+This **Python 3.8** module allows you to find plausible and feasible political coalitions.
 
 ## How to use this module
 
 Please read the comments in `coalitions.py` as well as the examples. The usage is straightforward and self-explanatory. If questions remain, feel free to open an issue.
+
+## To do
+
+- Allow the modelling of more complex enmities
+- SVG output (for journos!)
 
 ## Licensing
 
