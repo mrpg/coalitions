@@ -4,7 +4,7 @@ This Python module allows you to find plausible and feasible political coalition
 
 ## How to use this module
 
-Please read the comments in coalitions.py as well as the examples. The usage is straightforward and self-explanatory. If questions remain, feel free to open an issue.
+Please read the comments in `coalitions.py` as well as the examples. The usage is straightforward and self-explanatory. If questions remain, feel free to open an issue.
 
 ## Licensing
 
