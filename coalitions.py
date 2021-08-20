@@ -24,10 +24,10 @@ def coalitions(parties, *, unfeasible = [], remove_extraneous = True, majority =
 		sum_parties = sum(parties.values())
 		parties = {party: percent/sum_parties for party, percent in parties.items()} # normalize values
 		
-		if all(x[1] > threshold for x in parties.items()): # are all parties above the threshold?
+		if all(x[1] >= threshold for x in parties.items()): # are all parties above the threshold?
 			break
 		else:
-			parties = {a: b for a, b in parties.items() if b > threshold} # remove small parties and, in the next step, renormalize parties by redistributing the (eliminated) percentages of small parties to larger ones
+			parties = {a: b for a, b in parties.items() if b >= threshold} # remove small parties and, in the next step, renormalize parties by redistributing the (eliminated) percentages of small parties to larger ones
 	
 	for coalition in powerset(parties): # iterate over powerset of parties
 		if not coalition == (): # ignore empty set
