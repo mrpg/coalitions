@@ -3,7 +3,6 @@ import itertools
 
 def powerset(iterable):
     # source: https://docs.python.org/3/library/itertools.html#itertools-recipes
-
     s = list(iterable)
     return itertools.chain.from_iterable(
         itertools.combinations(s, r) for r in range(len(s) + 1)
@@ -11,50 +10,73 @@ def powerset(iterable):
 
 
 def coalitions(
-    parties, *, unfeasible=[], remove_extraneous=True, majority=0.5, threshold=0.05
+    parties, *, remove_extraneous=True, threshold=0.05, no_threshold=None, majority=0.5
 ):
-    """Calculate and yield feasible coalitions.
+    """Calculate and yield feasible parliamentary coalitions.
+
+    This function generates possible coalitions of political parties that could form
+    a government based on their parliamentary representation or poll results. It takes
+    into account various rules such as minimum thresholds and majority requirements.
 
     Parameters:
-            parties (dict): A dict containing party names as values and some performance measure (such as percentages or seats in parliament) as the corresponding values. The values must be numeric.
-            unfeasible (list): A list of tuples containing enmities between two parties. No coalition is considered feasible if it contains both parties of any tuple in this list.
-            remove_extraneous (bool): Must all parties in a coalition be strictly necessary? If True, no coalitions that contain more parties than strictly required to exceed the majority are returned.
-            majority (float): What percentage of the sum of performance measures (sum(parties.values())) constitues a majority?
-            threshold (float): Exclude parties that have less than threshold*100% of the sum of performance measures (sum(parties.values())). Mostly relevant for German elections ("Fünfprozenthürde"). Should be set to 0 if the performance measure is seats in parliament and not poll results.
+        parties (dict): Dictionary mapping party names (str) to their performance measure
+            (numeric). Performance can be either percentage of votes or number of seats.
+            Use None as key for "Other" parties which will be excluded from calculations
+            after threshold-passers are ascertained.
+        remove_extraneous (bool, optional): If True, excludes coalitions that contain more
+            parties than necessary to form a majority. Defaults to True.
+        threshold (float, optional): Minimum percentage (as decimal) of total performance
+            measure required for a party to be included. Used for election thresholds like
+            Germany's "Fünfprozenthürde". Set to 0 if working with seat numbers.
+            Defaults to 0.05 (5%).
+        no_threshold (set/list, optional): Collection of party names exempt from the
+            threshold requirement. Useful for exceptions like Germany's
+            "Grundmandatsklausel". Defaults to None.
+        majority (float, optional): Decimal fraction of total performance measure required
+            to form a majority. Defaults to 0.5 (50%).
 
     Yields:
-            (coalition, majority): A tuple with a feasible coalition and corresponding majority.
+        tuple: (coalition, total_strength) where:
+            - coalition is a tuple of party names forming a valid coalition
+            - total_strength is the sum of their performance measures
+
+    Examples:
+        >>> parties = {"A": 0.35, "B": 0.25, "C": 0.20, "D": 0.15, None: 0.05}
+        >>> list(coalitions(parties))
+        [(("A", "B"), 0.60), (("A", "C"), 0.55), (("A", "B", "C"), 0.80), ...]
     """
+    # Convert no_threshold to set if provided, empty set if None
+    no_threshold = set(no_threshold or [])
+    total = sum(parties.values())
 
-    while True:
-        sum_parties = sum(parties.values())
-        parties = {
-            party: percent / sum_parties for party, percent in parties.items()
-        }  # normalize values
+    # Apply threshold and create working set of parties
+    valid_parties = {
+        name: value
+        for name, value in parties.items()
+        if (value / total >= threshold or name in no_threshold) and name is not None
+    }
 
-        if all(
-            x[1] >= threshold for x in parties.items()
-        ):  # are all parties above the threshold?
-            break
-        else:
-            parties = {
-                a: b for a, b in parties.items() if b >= threshold
-            }  # remove small parties and, in the next step, renormalize parties by redistributing the (eliminated) percentages of small parties to larger ones
+    # Generate all possible combinations using powerset
+    for coalition in powerset(valid_parties.keys()):
+        # Skip empty coalitions
+        if not coalition:
+            continue
 
-    for coalition in powerset(parties):  # iterate over powerset of parties
-        if not coalition == ():  # ignore empty set
-            if all(
-                not (u[0] in coalition and u[1] in coalition) for u in unfeasible
-            ):  # ignore coalitions with enmities
-                if (
-                    maj := sum(y for x, y in parties.items() if x in coalition)
-                ) > majority:  # ignore coalitions that have no majority
-                    if remove_extraneous:
-                        if all(
-                            maj - y <= majority
-                            for x, y in parties.items()
-                            if x in coalition
-                        ):  # check whether all parties in the coalition are strictly necessary
-                            yield coalition, maj
-                    else:
-                        yield coalition, maj
+        # Calculate coalition strength
+        coalition_strength = sum(valid_parties[party] for party in coalition)
+        coalition_share = coalition_strength / total
+
+        # Check if coalition reaches majority threshold
+        if coalition_share >= majority:
+            # If removing extraneous parties is requested
+            if remove_extraneous:
+                # Check if coalition would still have majority after removing any single party
+                is_minimal = all(
+                    sum(valid_parties[p] for p in coalition if p != party) / total
+                    < majority
+                    for party in coalition
+                )
+                if not is_minimal:
+                    continue
+
+            yield (coalition, coalition_strength)
