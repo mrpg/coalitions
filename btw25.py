@@ -12,5 +12,7 @@ poll = {
     "BSW": 0.0444,
 }
 
-for p, m in coalitions(poll):
+poll[None] = 1 - sum(poll.values())
+
+for p, m in coalitions(poll, no_threshold=None):
     print(p, m)
